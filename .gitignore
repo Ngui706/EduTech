@@ -1,0 +1,7 @@
+node_modules
+schema.sql
+.env
+check_db.js
+techsips-backend
+node-v20.tar.gz
+techsips.zip
