@@ -53,6 +53,36 @@ export default function CourseDetail() {
     }
   };
 
+  // Review states and actions
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (submittingReview) return;
+    if (reviewComment.trim().length < 10) {
+      toast.error('Comment must be at least 10 characters.');
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      await api.post('/reviews', {
+        course_id: course.id,
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      });
+      toast.success('Thank you for your review!');
+      setReviewComment('');
+      setReviewRating(5);
+      fetchCourseDetail();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit review.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex justify-center items-center">
@@ -203,6 +233,16 @@ export default function CourseDetail() {
               >
                 About Instructor
               </button>
+              <button
+                onClick={() => setActiveTab('reviews')}
+                className={`py-3 px-6 font-semibold text-sm border-b-2 transition-all ${
+                  activeTab === 'reviews'
+                    ? 'border-brand-500 text-brand-500'
+                    : 'border-transparent text-slate-400 hover:text-slate-300'
+                }`}
+              >
+                Reviews ({course.reviews?.length || 0})
+              </button>
             </div>
 
             {/* Syllabus Tab */}
@@ -294,6 +334,116 @@ export default function CourseDetail() {
                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
                   {course.users?.bio || 'This instructor has not shared a bio yet.'}
                 </p>
+              </div>
+            )}
+
+            {/* Reviews Tab */}
+            {activeTab === 'reviews' && (
+              <div className="space-y-8 animate-fade-in">
+                {/* Submit Review Form */}
+                {course.isEnrolled && !course.reviews?.some(r => r.users?.id === user?.id) && (
+                  <form onSubmit={handleReviewSubmit} className="glass-card p-6 space-y-4">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Write a Review</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Rating</label>
+                        <div className="flex items-center space-x-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <button
+                              type="button"
+                              key={star}
+                              onClick={() => setReviewRating(star)}
+                              className="focus:outline-none"
+                            >
+                              <Star
+                                className={`h-6 w-6 ${
+                                  star <= reviewRating
+                                    ? 'text-amber-400 fill-amber-400'
+                                    : 'text-slate-350 dark:text-slate-600'
+                                }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-500">Comment (Minimum 10 characters)</label>
+                        <textarea
+                          value={reviewComment}
+                          onChange={(e) => setReviewComment(e.target.value)}
+                          rows={4}
+                          className="w-full px-4 py-2 border border-slate-200 dark:border-darkBorder bg-slate-50 dark:bg-darkBg rounded-xl text-sm focus:outline-none text-slate-800 dark:text-white"
+                          placeholder="Share your experience taking this course..."
+                          required
+                          minLength={10}
+                          maxLength={1000}
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={submittingReview || reviewComment.trim().length < 10}
+                        className="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl text-sm disabled:opacity-50 transition-colors shadow-md shadow-brand-500/10"
+                      >
+                        {submittingReview ? 'Submitting...' : 'Submit Review'}
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* List of Reviews */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">
+                    Student Feedback ({course.reviews?.length || 0})
+                  </h3>
+                  {course.reviews?.length === 0 ? (
+                    <p className="text-slate-400 text-sm italic">No reviews yet for this course. Be the first to review!</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {course.reviews.map((rev) => (
+                        <div key={rev.id} className="glass-card p-5 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              {rev.users?.avatar_url ? (
+                                <img
+                                  src={rev.users.avatar_url}
+                                  alt=""
+                                  className="h-10 w-10 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="h-10 w-10 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold text-sm">
+                                  {rev.users?.full_name?.substring(0, 2).toUpperCase() || 'ST'}
+                                </div>
+                              )}
+                              <div>
+                                <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                                  {rev.users?.full_name}
+                                </h4>
+                                <div className="flex items-center space-x-1 mt-0.5">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className={`h-3.5 w-3.5 ${
+                                        star <= rev.rating
+                                          ? 'text-amber-400 fill-amber-400'
+                                          : 'text-slate-200 dark:text-slate-700'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-xs text-slate-450 dark:text-slate-500">
+                              {new Date(rev.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
+                            {rev.comment}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

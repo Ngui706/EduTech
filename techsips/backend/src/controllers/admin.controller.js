@@ -342,3 +342,63 @@ export const updatePlatformSettings = async (req, res) => {
 
   res.json({ success: true, message: 'Settings updated' });
 };
+
+// ── All Tutors with Their Courses ─────────────────────────────────────────────
+export const getTutorsWithCourses = async (req, res) => {
+  // Fetch all approved tutors (users with role = tutor)
+  const { data: tutorUsers, error: userErr } = await supabase
+    .from('users')
+    .select(`
+      id, full_name, email, avatar_url, created_at, is_active,
+      tutors(
+        id, bio, skills, experience_years, verification_status,
+        whatsapp_number, linkedin_url, portfolio_url
+      )
+    `)
+    .eq('role', 'tutor')
+    .order('created_at', { ascending: false });
+
+  if (userErr) return res.status(500).json({ success: false, message: 'Failed to fetch tutors' });
+
+  // Fetch all courses for these tutors in one query (including enrollment counts)
+  const tutorIds = (tutorUsers || []).map((u) => u.id);
+
+  let courses = [];
+  if (tutorIds.length > 0) {
+    const { data: courseData, error: courseErr } = await supabase
+      .from('courses')
+      .select(`
+        id, title, slug, thumbnail_url, difficulty, status, is_approved,
+        is_free, price, rating_avg, rating_count, enrollment_count,
+        created_at, tutor_id,
+        categories(id, name)
+      `)
+      .in('tutor_id', tutorIds)
+      .order('created_at', { ascending: false });
+
+    if (!courseErr) courses = courseData || [];
+  }
+
+  // Group courses by tutor_id
+  const coursesByTutor = {};
+  for (const c of courses) {
+    if (!coursesByTutor[c.tutor_id]) coursesByTutor[c.tutor_id] = [];
+    coursesByTutor[c.tutor_id].push(c);
+  }
+
+  // Merge into response
+  const result = (tutorUsers || []).map((u) => ({
+    ...u,
+    tutor_profile: u.tutors?.[0] || null,
+    courses: coursesByTutor[u.id] || [],
+    total_courses: (coursesByTutor[u.id] || []).length,
+    published_courses: (coursesByTutor[u.id] || []).filter(
+      (c) => c.status === 'published' && c.is_approved
+    ).length,
+    total_enrollments: (coursesByTutor[u.id] || []).reduce(
+      (sum, c) => sum + (c.enrollment_count || 0), 0
+    ),
+  }));
+
+  res.json({ success: true, data: result });
+};

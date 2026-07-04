@@ -45,6 +45,7 @@ import TutorSettings from './pages/tutor/TutorSettings';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminOverview from './pages/admin/AdminOverview';
 import AdminTutors from './pages/admin/AdminTutors';
+import AdminTutorCourses from './pages/admin/AdminTutorCourses';
 import AdminCourses from './pages/admin/AdminCourses';
 import AdminPromotions from './pages/admin/AdminPromotions';
 import AdminCategories from './pages/admin/AdminCategories';
@@ -147,6 +148,7 @@ export default function App() {
             <Route path="/dashboard/admin" element={<AdminDashboard />}>
               <Route index element={<AdminOverview />} />
               <Route path="tutors" element={<AdminTutors />} />
+              <Route path="tutor-catalogue" element={<AdminTutorCourses />} />
               <Route path="courses" element={<AdminCourses />} />
               <Route path="promotions" element={<AdminPromotions />} />
               <Route path="categories" element={<AdminCategories />} />

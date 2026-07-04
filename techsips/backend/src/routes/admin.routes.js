@@ -21,6 +21,7 @@ import {
   deleteCategory,
   getPlatformSettings,
   updatePlatformSettings,
+  getTutorsWithCourses,
 } from '../controllers/admin.controller.js';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
@@ -33,6 +34,7 @@ router.use(authenticate, requireAdmin);
 router.get('/dashboard', getAdminDashboard);
 
 // Tutors
+router.get('/tutors/all', getTutorsWithCourses);
 router.get('/tutors/pending', getPendingTutors);
 router.put('/tutors/:id/verify', verifyTutor);
 router.put('/tutors/:id/suspend', suspendTutor);

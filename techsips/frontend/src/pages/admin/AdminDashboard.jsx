@@ -1,12 +1,13 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { Users, BookOpen, Sparkles, FolderOpen, LayoutDashboard } from 'lucide-react';
+import { Users, BookOpen, Sparkles, FolderOpen, LayoutDashboard, Library } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
 
 export default function AdminDashboard() {
   const sidebarLinks = [
     { path: '/dashboard/admin', label: 'Overview', icon: LayoutDashboard, end: true },
     { path: '/dashboard/admin/tutors', label: 'Tutor Verification', icon: Users },
+    { path: '/dashboard/admin/tutor-catalogue', label: 'Tutor Catalogue', icon: Library },
     { path: '/dashboard/admin/courses', label: 'Course Approvals', icon: BookOpen },
     { path: '/dashboard/admin/promotions', label: 'Promotion Queue', icon: Sparkles },
     { path: '/dashboard/admin/categories', label: 'Category Manager', icon: FolderOpen },
