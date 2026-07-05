@@ -49,6 +49,7 @@ import AdminTutorCourses from './pages/admin/AdminTutorCourses';
 import AdminCourses from './pages/admin/AdminCourses';
 import AdminPromotions from './pages/admin/AdminPromotions';
 import AdminCategories from './pages/admin/AdminCategories';
+import AdminUsers from './pages/admin/AdminUsers';
 
 // Route Guards
 function ProtectedRoute({ allowedRoles }) {
@@ -147,6 +148,7 @@ export default function App() {
           <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/dashboard/admin" element={<AdminDashboard />}>
               <Route index element={<AdminOverview />} />
+              <Route path="users" element={<AdminUsers />} />
               <Route path="tutors" element={<AdminTutors />} />
               <Route path="tutor-catalogue" element={<AdminTutorCourses />} />
               <Route path="courses" element={<AdminCourses />} />

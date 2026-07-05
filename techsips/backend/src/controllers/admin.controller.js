@@ -253,7 +253,7 @@ export const getAllUsers = async (req, res) => {
 
   let query = supabase
     .from('users')
-    .select('id, full_name, email, role, is_active, is_suspended, created_at', { count: 'exact' })
+    .select('id, full_name, email, role, avatar_url, is_active, is_suspended, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(offset, offset + parseInt(limit) - 1);
 
