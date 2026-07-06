@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Star, Shield, Award, Users, Play, Code, Bot, BarChart, ShieldAlert, Cloud, Smartphone, Palette, Megaphone, Briefcase } from 'lucide-react';
+import { ArrowRight, Star, Shield, Award, Users, Play, Code, Bot, BarChart, ShieldAlert, Cloud, Smartphone, Palette, Megaphone, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../api/axios';
 
 const categoryIcons = {
@@ -19,6 +19,25 @@ export default function Landing() {
   const [featured, setFeatured] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const slides = [
+    {
+      image: '/images/hero1.jpg',
+      title: 'Master Modern Technologies',
+      subtitle: 'Build real-world applications with hands-on projects and interactive code reviews guided by industry experts.'
+    },
+    {
+      image: '/images/hero2.jpg',
+      title: 'Learn from Verified Mentors',
+      subtitle: 'Connect with top-rated professionals who help you cross the bridge from theory to practice.'
+    },
+    {
+      image: '/images/hero3.jpg',
+      title: 'Collaborate & Build Portfolios',
+      subtitle: 'Join peer learning cohorts, collaborate on software products, and land global remote contracts.'
+    }
+  ];
 
   useEffect(() => {
     async function fetchData() {
@@ -27,7 +46,6 @@ export default function Landing() {
           api.get('/courses'),
           api.get('/categories')
         ]);
-        // Set courses (filter by featured/sponsored if any, fallback to first few)
         setFeatured(featuredRes.data.data.courses || []);
         setCategories(catsRes.data.data || []);
       } catch (err) {
@@ -39,6 +57,21 @@ export default function Landing() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  };
+
   return (
     <div className="relative min-h-screen overflow-hidden dark:bg-darkBg">
       {/* Background decoration */}
@@ -48,35 +81,108 @@ export default function Landing() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative pt-20 pb-16 md:pt-32 md:pb-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto space-y-6">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full border border-brand-500/20 bg-brand-500/10 text-brand-500 dark:text-brand-400 text-xs font-semibold tracking-wide uppercase animate-pulse-subtle">
-            <span>Learn. Build. Earn.</span>
+      <section className="relative pt-12 pb-16 md:pt-20 md:pb-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          {/* Left Column: Headline and Call-to-actions */}
+          <div className="text-left space-y-6">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full border border-brand-500/20 bg-brand-500/10 text-brand-500 dark:text-brand-400 text-xs font-semibold tracking-wide uppercase animate-pulse-subtle">
+              <span>Learn. Build. Earn.</span>
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.15]">
+              Master In-Demand <br />Tech Skills <br />
+              <span className="text-gradient">From Verified Mentors</span>
+            </h1>
+
+            <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-xl">
+              TechSips connects aspiring builders with seasoned professionals in Africa and Kenya. Join the cohort, compile code, build portfolios, and earn global client commissions.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
+              <Link
+                to="/courses"
+                className="flex items-center justify-center space-x-2 px-8 py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-2xl transition-all duration-300 shadow-xl shadow-brand-500/20 hover:shadow-brand-500/35"
+              >
+                <span>Explore Catalog</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                to="/register/tutor"
+                className="flex items-center justify-center space-x-2 px-8 py-3.5 border border-slate-200 dark:border-darkBorder bg-white/50 dark:bg-darkCard/50 backdrop-blur text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-darkCard font-medium rounded-2xl transition-all duration-300"
+              >
+                <span>Become a Tutor</span>
+              </Link>
+            </div>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.15]">
-            Master In-Demand Tech Skills <br />
-            <span className="text-gradient">From Verified Mentors</span>
-          </h1>
+          {/* Right Column: Hero Carousel */}
+          <div className="relative group w-full aspect-[4/3] sm:aspect-[16/10] lg:aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border border-slate-200/50 dark:border-darkBorder/40 bg-slate-100 dark:bg-darkCard">
+            {/* Slides container */}
+            <div className="relative w-full h-full">
+              {slides.map((slide, index) => (
+                <div
+                  key={index}
+                  className={`absolute inset-0 w-full h-full transition-all duration-700 ease-in-out ${
+                    index === currentSlide
+                      ? 'opacity-100 scale-100 pointer-events-auto z-10'
+                      : 'opacity-0 scale-95 pointer-events-none z-0'
+                  }`}
+                >
+                  {/* Image */}
+                  <img
+                    src={slide.image}
+                    alt={slide.title}
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Overlay gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-900/40 to-transparent"></div>
 
-          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400">
-            TechSips connects aspiring builders with seasoned professionals in Africa and Kenya. Join the cohort, compile code, build portfolios, and earn global client commissions.
-          </p>
+                  {/* Caption */}
+                  <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 text-white space-y-2">
+                    <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                      {slide.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-200 font-medium max-w-md">
+                      {slide.subtitle}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link
-              to="/courses"
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-medium rounded-2xl transition-all duration-300 shadow-xl shadow-brand-500/20 hover:shadow-brand-500/35"
+            {/* Left arrow */}
+            <button
+              onClick={prevSlide}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-xl bg-white/20 hover:bg-white/35 dark:bg-slate-900/30 dark:hover:bg-slate-900/55 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-200 focus:outline-none"
+              aria-label="Previous slide"
             >
-              <span>Explore Catalog</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/register/tutor"
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-3.5 border border-slate-200 dark:border-darkBorder bg-white/50 dark:bg-darkCard/50 backdrop-blur text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-darkCard font-medium rounded-2xl transition-all duration-300"
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+
+            {/* Right arrow */}
+            <button
+              onClick={nextSlide}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2.5 rounded-xl bg-white/20 hover:bg-white/35 dark:bg-slate-900/30 dark:hover:bg-slate-900/55 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-200 focus:outline-none"
+              aria-label="Next slide"
             >
-              <span>Become a Tutor</span>
-            </Link>
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            {/* Indicator dots */}
+            <div className="absolute bottom-6 right-6 z-20 flex space-x-2">
+              {slides.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                    index === currentSlide
+                      ? 'bg-brand-500 w-6'
+                      : 'bg-white/40 hover:bg-white/60'
+                  }`}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
