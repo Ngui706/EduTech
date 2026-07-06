@@ -18,7 +18,7 @@ export default function StudentDashboard() {
       <Sidebar links={sidebarLinks} title="Student Portal" />
 
       {/* Main Content Area */}
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-5xl mx-auto w-full">
+      <main className="flex-1 p-6 md:p-8 pb-24 md:pb-8 overflow-y-auto max-w-5xl mx-auto w-full">
         <Outlet />
       </main>
     </div>

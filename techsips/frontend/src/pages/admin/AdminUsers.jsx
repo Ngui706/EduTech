@@ -10,6 +10,7 @@ import api from '../../api/axios';
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'tutor', 'student'
   const [exporting, setExporting] = useState(false);
@@ -20,12 +21,17 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      // Fetch users with a high limit to get all of them for list & export
-      const { data } = await api.get('/admin/users?limit=2000');
+      // Fetch all users (high limit so pagination doesn't cut results)
+      const { data } = await api.get('/admin/users', {
+        params: { limit: 2000, page: 1 }
+      });
       setUsers(data.data?.users || []);
-    } catch {
-      toast.error('Failed to load user directory.');
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to load user directory. Is the server running?';
+      setLoadError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -48,6 +54,7 @@ export default function AdminUsers() {
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
       const matchesSearch =
+        !search.trim() ||
         u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
         u.email?.toLowerCase().includes(search.toLowerCase());
       
@@ -193,6 +200,22 @@ export default function AdminUsers() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="glass-card p-12 text-center space-y-4">
+        <AlertCircle className="h-12 w-12 mx-auto text-rose-500 opacity-80" />
+        <p className="font-bold text-slate-800 dark:text-white">Failed to Load User Directory</p>
+        <p className="text-sm text-slate-500 max-w-sm mx-auto">{loadError}</p>
+        <button
+          onClick={fetchUsers}
+          className="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-bold transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header banner */}
@@ -290,8 +313,18 @@ export default function AdminUsers() {
       {filteredUsers.length === 0 ? (
         <div className="glass-card p-12 text-center text-slate-400">
           <AlertCircle className="h-12 w-12 mx-auto text-slate-500 mb-4 opacity-50" />
-          <p className="font-semibold">No users match your criteria.</p>
-          <p className="text-xs mt-1 text-slate-500">Try modifying your search or filters.</p>
+          <p className="font-semibold">
+            {search.trim()
+              ? 'No users match your search.'
+              : activeTab === 'student'
+              ? 'No students registered yet.'
+              : activeTab === 'tutor'
+              ? 'No tutors registered yet.'
+              : 'No users found.'}
+          </p>
+          <p className="text-xs mt-1 text-slate-500">
+            {search.trim() ? 'Try a different name or email.' : 'Users will appear here once they register on the platform.'}
+          </p>
         </div>
       ) : (
         <div className="glass-card overflow-hidden">
