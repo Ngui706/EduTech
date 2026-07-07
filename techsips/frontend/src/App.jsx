@@ -50,6 +50,7 @@ import AdminCourses from './pages/admin/AdminCourses';
 import AdminPromotions from './pages/admin/AdminPromotions';
 import AdminCategories from './pages/admin/AdminCategories';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminLogs from './pages/admin/AdminLogs';
 
 // Route Guards
 function ProtectedRoute({ allowedRoles }) {
@@ -154,6 +155,7 @@ export default function App() {
               <Route path="courses" element={<AdminCourses />} />
               <Route path="promotions" element={<AdminPromotions />} />
               <Route path="categories" element={<AdminCategories />} />
+              <Route path="logs" element={<AdminLogs />} />
             </Route>
           </Route>
 

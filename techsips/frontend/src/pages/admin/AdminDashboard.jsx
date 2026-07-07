@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import { Users, BookOpen, Sparkles, FolderOpen, LayoutDashboard, Library, ShieldCheck } from 'lucide-react';
+import { Users, BookOpen, Sparkles, FolderOpen, LayoutDashboard, Library, ShieldCheck, Activity } from 'lucide-react';
 import Sidebar from '../../components/Sidebar';
 
 export default function AdminDashboard() {
@@ -12,6 +12,7 @@ export default function AdminDashboard() {
     { path: '/dashboard/admin/courses', label: 'Course Approvals', icon: BookOpen },
     { path: '/dashboard/admin/promotions', label: 'Promotion Queue', icon: Sparkles },
     { path: '/dashboard/admin/categories', label: 'Category Manager', icon: FolderOpen },
+    { path: '/dashboard/admin/logs', label: 'Activity Logs', icon: Activity },
   ];
 
   return (
