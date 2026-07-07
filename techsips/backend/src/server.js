@@ -34,8 +34,53 @@ const PORT = process.env.PORT || 5000;
 
 // ── Security Middleware ──────────────────────────────────────────────────────
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  // 1. Strict-Transport-Security (HSTS)
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true,
+  },
+  // 2. Content-Security-Policy (CSP)
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https://*.supabase.co", "https://images.unsplash.com"],
+      connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "http://localhost:*", "http://127.0.0.1:*"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+    },
+  },
+  // 3. X-Frame-Options
+  frameguard: {
+    action: 'deny',
+  },
+  // 4. X-Content-Type-Options
+  noSniff: true,
+  // 5. Referrer-Policy
+  referrerPolicy: {
+    policy: 'strict-origin-when-cross-origin',
+  },
+  // 7. Cross-Origin-Opener-Policy (COOP)
+  crossOriginOpenerPolicy: {
+    policy: 'same-origin',
+  },
+  // 8. Cross-Origin-Resource-Policy (CORP)
+  crossOriginResourcePolicy: {
+    policy: 'cross-origin',
+  },
 }));
+
+// 6. Permissions-Policy
+app.use((req, res, next) => {
+  res.setHeader(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), interest-cohort=()'
+  );
+  next();
+});
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
