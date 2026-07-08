@@ -56,13 +56,13 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold text-sm tracking-wider uppercase mb-4">Connect</h3>
             <div className="flex space-x-4 mb-4">
-              <a href="#" className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors text-slate-300 hover:text-white">
-                <Twitter className="h-4 w-4" />
+              <a href="https://wa.me/254795846971" className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors text-slate-300 hover:text-white">
+                <Whatsapp className="h-4 w-4" />
               </a>
-              <a href="#" className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors text-slate-300 hover:text-white">
+              <a href="https://www.linkedin.com/in/stephen-vundi-3710902b2/" className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors text-slate-300 hover:text-white">
                 <Linkedin className="h-4 w-4" />
               </a>
-              <a href="#" className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors text-slate-300 hover:text-white">
+              <a href="https://github.com/Ngui706" className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors text-slate-300 hover:text-white">
                 <Github className="h-4 w-4" />
               </a>
             </div>
