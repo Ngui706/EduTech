@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   GraduationCap, BookOpen, Users, Star, ChevronDown, ChevronUp,
-  Search, ExternalLink, CheckCircle2, XCircle, Clock, Award,
+  Search, ExternalLink, CheckCircle2, XCircle, Clock, Award, Trash2, RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -44,8 +44,10 @@ function StatusBadge({ status, approved }) {
 }
 
 // ─── Tutor Card ────────────────────────────────────────────────────────────────
-function TutorCard({ tutor }) {
+function TutorCard({ tutor, onTutorDeleted, onCourseDeleted }) {
   const [expanded, setExpanded] = useState(false);
+  const [deletingCourseId, setDeletingCourseId] = useState(null);
+  const [deletingTutor, setDeletingTutor] = useState(false);
   const profile = tutor.tutor_profile;
   const verificationStatus = profile?.verification_status;
 
@@ -71,8 +73,39 @@ function TutorCard({ tutor }) {
     );
   };
 
+  const handleDeleteCourse = async (courseId, courseTitle) => {
+    if (!window.confirm(
+      `Delete course "${courseTitle}"?\n\n⚠️ This will also remove all enrollments, reviews, and modules.\n\nThis action cannot be undone.`
+    )) return;
+    setDeletingCourseId(courseId);
+    try {
+      await api.delete(`/admin/courses/${courseId}`);
+      toast.success(`Course "${courseTitle}" deleted.`);
+      if (onCourseDeleted) onCourseDeleted(tutor.id, courseId);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete course.');
+    } finally {
+      setDeletingCourseId(null);
+    }
+  };
+
+  const handleDeleteTutor = async () => {
+    if (!window.confirm(
+      `Permanently delete tutor "${tutor.full_name}"?\n\n⚠️ This will delete:\n• All their courses\n• All student enrollments\n• Their tutor profile\n\nThis cannot be undone.`
+    )) return;
+    setDeletingTutor(true);
+    try {
+      await api.delete(`/admin/users/${tutor.id}`);
+      toast.success(`Tutor "${tutor.full_name}" permanently deleted.`);
+      if (onTutorDeleted) onTutorDeleted(tutor.id);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete tutor.');
+      setDeletingTutor(false);
+    }
+  };
+
   return (
-    <div className="glass-card overflow-hidden">
+    <div className={`glass-card overflow-hidden transition-opacity ${deletingTutor ? 'opacity-40 pointer-events-none' : ''}`}>
       {/* ── Header ──────────────────────────────────────────── */}
       <div
         className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
@@ -125,6 +158,22 @@ function TutorCard({ tutor }) {
             <p className="text-xl font-extrabold text-sky-500">{tutor.total_enrollments}</p>
             <p className="text-[10px] text-slate-400 uppercase tracking-wide">Students</p>
           </div>
+          {/* Delete tutor button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteTutor();
+            }}
+            disabled={deletingTutor}
+            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-colors disabled:opacity-40"
+            title="Permanently delete this tutor and all their courses"
+          >
+            {deletingTutor ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-rose-400 border-t-transparent" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+          </button>
           <div className="text-slate-400">
             {expanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
           </div>
@@ -175,7 +224,7 @@ function TutorCard({ tutor }) {
                     </div>
                   </div>
 
-                  {/* Metrics */}
+                    {/* Metrics + delete */}
                   <div className="flex items-center gap-4 flex-shrink-0 text-xs text-slate-500">
                     <span className="flex items-center gap-1">
                       <Users className="h-3.5 w-3.5" />
@@ -198,6 +247,21 @@ function TutorCard({ tutor }) {
                       <ExternalLink className="h-3 w-3" />
                       View
                     </a>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCourse(course.id, course.title);
+                      }}
+                      disabled={deletingCourseId === course.id}
+                      className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors disabled:opacity-40"
+                      title="Delete this course permanently"
+                    >
+                      {deletingCourseId === course.id ? (
+                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-rose-400 border-t-transparent" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -215,18 +279,42 @@ export default function AdminTutorCourses() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
+  const fetchTutors = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get('/admin/tutors/all');
+      setTutors(data.data || []);
+    } catch {
+      toast.error('Failed to load tutor catalogue.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const { data } = await api.get('/admin/tutors/all');
-        setTutors(data.data || []);
-      } catch {
-        toast.error('Failed to load tutor catalogue.');
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchTutors();
+  }, [fetchTutors]);
+
+  // Optimistic: remove entire tutor row after deletion
+  const handleTutorDeleted = useCallback((tutorId) => {
+    setTutors((prev) => prev.filter((t) => t.id !== tutorId));
+  }, []);
+
+  // Optimistic: remove specific course from tutor row after deletion
+  const handleCourseDeleted = useCallback((tutorId, courseId) => {
+    setTutors((prev) =>
+      prev.map((t) => {
+        if (t.id !== tutorId) return t;
+        const newCourses = (t.courses || []).filter((c) => c.id !== courseId);
+        return {
+          ...t,
+          courses: newCourses,
+          total_courses: newCourses.length,
+          published_courses: newCourses.filter((c) => c.status === 'published' && c.is_approved).length,
+          total_enrollments: newCourses.reduce((sum, c) => sum + (c.enrollment_count || 0), 0),
+        };
+      })
+    );
   }, []);
 
   const filtered = useMemo(() => {
@@ -240,6 +328,7 @@ export default function AdminTutorCourses() {
     );
   }, [tutors, search]);
 
+  // Live computed stats from current state
   const totalCourses = useMemo(() => tutors.reduce((s, t) => s + t.total_courses, 0), [tutors]);
   const totalEnrollments = useMemo(() => tutors.reduce((s, t) => s + t.total_enrollments, 0), [tutors]);
 
@@ -254,16 +343,25 @@ export default function AdminTutorCourses() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-          Tutor Course Catalogue
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Browse all tutors and their full course portfolios.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">
+            Tutor Course Catalogue
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Browse all tutors and their full course portfolios. Delete tutors or individual courses.
+          </p>
+        </div>
+        <button
+          onClick={fetchTutors}
+          className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-darkCard dark:hover:bg-darkBorder text-slate-700 dark:text-white rounded-xl text-sm font-bold transition-all"
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span>Refresh</span>
+        </button>
       </div>
 
-      {/* Summary Stat Cards */}
+      {/* Summary Stat Cards – live computed */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div className="glass-card p-5 flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center">
@@ -317,10 +415,16 @@ export default function AdminTutorCourses() {
       ) : (
         <div className="space-y-3">
           {filtered.map((tutor) => (
-            <TutorCard key={tutor.id} tutor={tutor} />
+            <TutorCard
+              key={tutor.id}
+              tutor={tutor}
+              onTutorDeleted={handleTutorDeleted}
+              onCourseDeleted={handleCourseDeleted}
+            />
           ))}
         </div>
       )}
     </div>
   );
 }
+

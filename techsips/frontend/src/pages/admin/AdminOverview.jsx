@@ -1,24 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import { Users, BookOpen, Award, TrendingUp, Activity, ShieldCheck, Clock } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Users, BookOpen, Award, TrendingUp, Activity, ShieldCheck, Clock, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
 
 export default function AdminOverview() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchStats = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) setRefreshing(true);
+    else setLoading(true);
+
+    try {
+      const { data } = await api.get('/admin/dashboard');
+      setStats(data.data);
+    } catch (err) {
+      console.warn('Failed to load admin dashboard stats');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchStats() {
-      try {
-        const { data } = await api.get('/admin/dashboard');
-        setStats(data.data);
-      } catch (err) {
-        console.warn('Failed to load admin dashboard stats');
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchStats();
-  }, []);
+    // Auto-refresh every 60 seconds to stay in sync after deletions
+    const interval = setInterval(() => fetchStats(), 60_000);
+    return () => clearInterval(interval);
+  }, [fetchStats]);
 
   if (loading) {
     return (
@@ -42,15 +51,26 @@ export default function AdminOverview() {
       {/* Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-tr from-slate-800 to-slate-900 dark:from-darkCard dark:to-darkBg p-6 sm:p-8 text-white shadow-xl border dark:border-darkBorder/40">
         <div className="absolute top-[-20%] right-[-10%] w-[35%] aspect-square rounded-full bg-brand-500/10 blur-[80px]"></div>
-        <div className="relative space-y-2">
-          <div className="flex items-center space-x-2 text-brand-400 text-xs font-bold uppercase tracking-wider">
-            <Activity className="h-4 w-4 animate-pulse" />
-            <span>Platform Analytics</span>
+        <div className="relative flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2 text-brand-400 text-xs font-bold uppercase tracking-wider">
+              <Activity className="h-4 w-4 animate-pulse" />
+              <span>Platform Analytics</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold">Administration Overview</h1>
+            <p className="text-slate-400 text-sm max-w-xl">
+              Monitor all platform activity, manage tutor verifications, approve courses, and configure global settings from this central hub.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold">Administration Overview</h1>
-          <p className="text-slate-400 text-sm max-w-xl">
-            Monitor all platform activity, manage tutor verifications, approve courses, and configure global settings from this central hub.
-          </p>
+          <button
+            onClick={() => fetchStats(true)}
+            disabled={refreshing}
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl text-xs font-bold text-white transition-all disabled:opacity-50"
+            title="Refresh all stats"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{refreshing ? 'Refreshing…' : 'Refresh Stats'}</span>
+          </button>
         </div>
       </div>
 
@@ -101,6 +121,11 @@ export default function AdminOverview() {
           </div>
         </div>
       </div>
+
+      {/* Last refresh note */}
+      <p className="text-center text-xs text-slate-400">
+        Stats auto-refresh every 60 seconds · Last updated: {new Date().toLocaleTimeString()}
+      </p>
     </div>
   );
 }

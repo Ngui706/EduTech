@@ -241,8 +241,42 @@ export const rejectCourse = async (req, res) => {
 };
 
 export const deleteCourseAdmin = async (req, res) => {
-  await supabase.from('courses').delete().eq('id', req.params.id);
-  res.json({ success: true, message: 'Course deleted' });
+  const { id } = req.params;
+
+  // Fetch course info for logging before deletion
+  const { data: course } = await supabase
+    .from('courses').select('id, title, tutor_id').eq('id', id).single();
+
+  if (!course) return res.status(404).json({ success: false, message: 'Course not found' });
+
+  // Cascade: delete related data in correct order to avoid FK constraint issues
+  await Promise.all([
+    supabase.from('enrollments').delete().eq('course_id', id),
+    supabase.from('reviews').delete().eq('course_id', id),
+    supabase.from('promotion_requests').delete().eq('course_id', id),
+    supabase.from('notifications').delete().eq('link', `/courses/${id}`),
+  ]);
+
+  // Delete modules and lessons (if tables exist)
+  const { data: modules } = await supabase.from('course_modules').select('id').eq('course_id', id);
+  if (modules && modules.length > 0) {
+    const moduleIds = modules.map((m) => m.id);
+    await supabase.from('course_lessons').delete().in('module_id', moduleIds);
+    await supabase.from('course_modules').delete().eq('course_id', id);
+  }
+
+  // Finally delete the course
+  const { error } = await supabase.from('courses').delete().eq('id', id);
+  if (error) return res.status(500).json({ success: false, message: 'Failed to delete course' });
+
+  // Log the deletion
+  await supabase.from('activity_logs').insert({
+    user_id: req.user.id,
+    action: 'COURSE_DELETED',
+    details: { course_id: id, course_title: course.title, tutor_id: course.tutor_id },
+  });
+
+  res.json({ success: true, message: 'Course deleted', deletedId: id });
 };
 
 export const featureCourse = async (req, res) => {
@@ -339,8 +373,76 @@ export const getAllUsers = async (req, res) => {
 };
 
 export const deleteUser = async (req, res) => {
-  await supabase.from('users').delete().eq('id', req.params.id);
-  res.json({ success: true, message: 'User deleted' });
+  const { id } = req.params;
+
+  // Fetch user info before deletion for logging
+  const { data: user } = await supabase
+    .from('users').select('id, full_name, email, role').eq('id', id).single();
+
+  if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+  // Prevent self-deletion
+  if (id === req.user.id) {
+    return res.status(400).json({ success: false, message: 'Cannot delete your own account' });
+  }
+
+  // Cascade based on role
+  if (user.role === 'tutor') {
+    // Delete all courses and their related data
+    const { data: tutorCourses } = await supabase
+      .from('courses').select('id').eq('tutor_id', id);
+
+    if (tutorCourses && tutorCourses.length > 0) {
+      const courseIds = tutorCourses.map((c) => c.id);
+
+      // Delete lessons inside modules of these courses
+      const { data: modules } = await supabase
+        .from('course_modules').select('id').in('course_id', courseIds);
+      if (modules && modules.length > 0) {
+        const moduleIds = modules.map((m) => m.id);
+        await supabase.from('course_lessons').delete().in('module_id', moduleIds);
+      }
+
+      await Promise.all([
+        supabase.from('course_modules').delete().in('course_id', courseIds),
+        supabase.from('enrollments').delete().in('course_id', courseIds),
+        supabase.from('reviews').delete().in('course_id', courseIds),
+        supabase.from('promotion_requests').delete().in('course_id', courseIds),
+      ]);
+
+      await supabase.from('courses').delete().in('id', courseIds);
+    }
+
+    // Delete tutor profile
+    await supabase.from('tutors').delete().eq('user_id', id);
+  }
+
+  if (user.role === 'student') {
+    // Remove all enrollments (but keep courses/reviews intact for analytics)
+    await Promise.all([
+      supabase.from('enrollments').delete().eq('student_id', id),
+      supabase.from('reviews').delete().eq('user_id', id),
+    ]);
+  }
+
+  // Clean shared data for all roles
+  await Promise.all([
+    supabase.from('notifications').delete().eq('user_id', id),
+    supabase.from('certificates').delete().eq('user_id', id),
+  ]);
+
+  // Delete the user
+  const { error } = await supabase.from('users').delete().eq('id', id);
+  if (error) return res.status(500).json({ success: false, message: 'Failed to delete user' });
+
+  // Log the action
+  await supabase.from('activity_logs').insert({
+    user_id: req.user.id,
+    action: `${user.role.toUpperCase()}_DELETED`,
+    details: { deleted_user_id: id, deleted_name: user.full_name, deleted_email: user.email, role: user.role },
+  });
+
+  res.json({ success: true, message: `${user.role} deleted successfully`, deletedId: id, deletedRole: user.role });
 };
 
 // ── Activity Logs ─────────────────────────────────────────────────────────────

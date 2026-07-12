@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Users, Search, Download, Trash2, Mail, Calendar, Shield,
-  GraduationCap, BookOpen, AlertCircle, CheckCircle2, UserX
+  GraduationCap, BookOpen, AlertCircle, CheckCircle2, UserX,
+  RefreshCw, AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
@@ -14,16 +15,12 @@ export default function AdminUsers() {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'tutor', 'student'
   const [exporting, setExporting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null); // track which user is being deleted
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      // Fetch all users (high limit so pagination doesn't cut results)
       const { data } = await api.get('/admin/users', {
         params: { limit: 2000, page: 1 }
       });
@@ -35,18 +32,37 @@ export default function AdminUsers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to permanently delete user "${name}"? This action cannot be undone.`)) {
-      return;
-    }
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleDelete = async (id, name, role) => {
+    // Role-specific warning message
+    const warningExtra = role === 'tutor'
+      ? '\n\n⚠️ This will also permanently delete all their courses, enrollments, and promotion requests.'
+      : role === 'student'
+      ? '\n\n⚠️ This will also remove all their enrollments and reviews.'
+      : '';
+
+    if (!window.confirm(
+      `Are you sure you want to permanently delete ${role} "${name}"?${warningExtra}\n\nThis action CANNOT be undone.`
+    )) return;
+
+    setDeletingId(id);
     try {
       await api.delete(`/admin/users/${id}`);
-      toast.success('User deleted successfully.');
-      fetchUsers();
-    } catch {
-      toast.error('Failed to delete user.');
+
+      // ✅ Optimistic sync: immediately remove from local state
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+
+      toast.success(`${role.charAt(0).toUpperCase() + role.slice(1)} "${name}" has been permanently deleted.`);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to delete user.';
+      toast.error(msg);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -65,7 +81,7 @@ export default function AdminUsers() {
     });
   }, [users, search, activeTab]);
 
-  // Statistics
+  // Statistics – computed from current state (updates instantly after delete)
   const stats = useMemo(() => {
     const total = users.length;
     const tutors = users.filter((u) => u.role === 'tutor').length;
@@ -229,17 +245,27 @@ export default function AdminUsers() {
           </p>
         </div>
 
-        <button
-          onClick={handleExportPDF}
-          disabled={exporting || filteredUsers.length === 0}
-          className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-bold shadow-md shadow-brand-500/10 transition-all disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" />
-          <span>{exporting ? 'Generating PDF...' : 'Export to PDF'}</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchUsers}
+            className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-darkCard dark:hover:bg-darkBorder text-slate-700 dark:text-white rounded-xl text-sm font-bold transition-all"
+            title="Refresh user list"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+          <button
+            onClick={handleExportPDF}
+            disabled={exporting || filteredUsers.length === 0}
+            className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-bold shadow-md shadow-brand-500/10 transition-all disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            <span>{exporting ? 'Generating PDF...' : 'Export to PDF'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Summary counters */}
+      {/* Summary counters – always reflect current state */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="glass-card p-4 text-center">
           <p className="text-2xl font-extrabold text-slate-900 dark:text-white">{stats.total}</p>
@@ -271,7 +297,7 @@ export default function AdminUsers() {
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            All Users
+            All Users ({stats.total})
           </button>
           <button
             onClick={() => setActiveTab('tutor')}
@@ -281,7 +307,7 @@ export default function AdminUsers() {
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            Tutors
+            Tutors ({stats.tutors})
           </button>
           <button
             onClick={() => setActiveTab('student')}
@@ -291,7 +317,7 @@ export default function AdminUsers() {
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            Students
+            Students ({stats.students})
           </button>
         </div>
 
@@ -341,7 +367,12 @@ export default function AdminUsers() {
               </thead>
               <tbody className="text-xs divide-y dark:divide-darkBorder/30">
                 {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/50 dark:hover:bg-darkCard/30 transition-colors">
+                  <tr
+                    key={user.id}
+                    className={`hover:bg-slate-50/50 dark:hover:bg-darkCard/30 transition-colors ${
+                      deletingId === user.id ? 'opacity-40 pointer-events-none' : ''
+                    }`}
+                  >
                     {/* User Meta */}
                     <td className="p-4">
                       <div className="flex items-center space-x-3">
@@ -407,11 +438,16 @@ export default function AdminUsers() {
                     <td className="p-4 text-right">
                       {user.role !== 'admin' && (
                         <button
-                          onClick={() => handleDelete(user.id, user.full_name)}
-                          className="p-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-900/30 text-rose-500 rounded-xl transition-colors"
-                          title="Delete User permanently"
+                          onClick={() => handleDelete(user.id, user.full_name, user.role)}
+                          disabled={deletingId === user.id}
+                          className="p-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-900/30 text-rose-500 rounded-xl transition-colors disabled:opacity-50"
+                          title={`Delete ${user.role} permanently`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          {deletingId === user.id ? (
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-rose-400 border-t-transparent" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
                         </button>
                       )}
                     </td>
@@ -419,6 +455,11 @@ export default function AdminUsers() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Footer count */}
+          <div className="px-4 py-3 border-t dark:border-darkBorder/30 text-[10px] text-slate-400 font-medium">
+            Showing {filteredUsers.length} of {users.length} users
           </div>
         </div>
       )}
