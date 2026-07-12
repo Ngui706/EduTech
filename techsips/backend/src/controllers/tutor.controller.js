@@ -427,7 +427,33 @@ export const getEnrolledStudents = async (req, res) => {
 
   if (error) return res.status(500).json({ success: false, message: 'Failed to fetch students' });
 
-  res.json({ success: true, data });
+  // Fetch last login from activity logs for all enrolled students
+  const studentIds = (data || []).map((enroll) => enroll.users?.id).filter(Boolean);
+  const lastLogins = {};
+
+  if (studentIds.length > 0) {
+    const { data: logs } = await supabase
+      .from('activity_logs')
+      .select('user_id, created_at')
+      .eq('action', 'USER_LOGGED_IN')
+      .in('user_id', studentIds)
+      .order('created_at', { ascending: false });
+
+    if (logs) {
+      for (const log of logs) {
+        if (!lastLogins[log.user_id]) {
+          lastLogins[log.user_id] = log.created_at;
+        }
+      }
+    }
+  }
+
+  const enrichedData = (data || []).map((enroll) => ({
+    ...enroll,
+    last_login_at: enroll.users?.id ? (lastLogins[enroll.users.id] || null) : null
+  }));
+
+  res.json({ success: true, data: enrichedData });
 };
 
 // ── Module CRUD ───────────────────────────────────────────────────────────────

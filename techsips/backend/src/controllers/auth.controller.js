@@ -153,14 +153,30 @@ export const logout = async (req, res) => {
 
 // ── Forgot Password ───────────────────────────────────────────────────────────
 export const forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  const { email, password } = req.body;
+
+  // Fetch the user by email
   const { data: user } = await supabase.from('users').select('id, full_name').eq('email', email).single();
 
-  // Always return success (prevents email enumeration)
   if (!user) {
-    return res.json({ success: true, message: 'If that email exists, a reset link has been sent.' });
+    return res.status(404).json({ success: false, message: 'No registered user found with this email address.' });
   }
 
+  if (password) {
+    // Direct password reset requested by frontend
+    const password_hash = await bcrypt.hash(password, 12);
+    const { error } = await supabase.from('users').update({ password_hash }).eq('id', user.id);
+    if (error) {
+      return res.status(500).json({ success: false, message: 'Failed to reset password.' });
+    }
+
+    // Revoke all refresh tokens for security
+    await supabase.from('refresh_tokens').update({ is_revoked: true }).eq('user_id', user.id);
+
+    return res.json({ success: true, message: 'Password reset successful.' });
+  }
+
+  // Fallback (token creation)
   const resetToken = uuidv4();
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
@@ -170,7 +186,6 @@ export const forgotPassword = async (req, res) => {
     expires_at: expiresAt.toISOString(),
   });
 
-  // TODO: Send email with resetToken (configure SMTP)
   console.log(`Password reset token for ${email}: ${resetToken}`);
 
   res.json({ success: true, message: 'If that email exists, a reset link has been sent.' });
