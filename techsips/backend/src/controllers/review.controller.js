@@ -1,5 +1,34 @@
 import { supabase } from '../config/supabase.js';
 
+const ALLOWED_CATEGORIES = [
+  'Course Content',
+  'Instructor Quality',
+  'Pacing & Structure',
+  'Exercises & Quizzes',
+  'Overall Experience'
+];
+
+// Helper to format category and comment into database format
+const formatComment = (category, comment) => {
+  const cleanCategory = ALLOWED_CATEGORIES.includes(category) ? category : 'Overall Experience';
+  return `[${cleanCategory}] ${comment}`;
+};
+
+// Helper to parse database format into category and clean comment
+export const parseComment = (rawComment) => {
+  if (rawComment && rawComment.startsWith('[')) {
+    const closeBracketIndex = rawComment.indexOf(']');
+    if (closeBracketIndex > 1) {
+      const category = rawComment.substring(1, closeBracketIndex);
+      if (ALLOWED_CATEGORIES.includes(category)) {
+        const comment = rawComment.substring(closeBracketIndex + 1).trim();
+        return { category, comment };
+      }
+    }
+  }
+  return { category: 'Overall Experience', comment: rawComment || '' };
+};
+
 export const getCourseReviews = async (req, res) => {
   const { courseId } = req.params;
   const { page = 1, limit = 10 } = req.query;
@@ -14,11 +43,20 @@ export const getCourseReviews = async (req, res) => {
 
   if (error) return res.status(500).json({ success: false, message: 'Failed to fetch reviews' });
 
-  res.json({ success: true, data: { reviews: data, pagination: { total: count, page: parseInt(page) } } });
+  const formattedReviews = (data || []).map((review) => {
+    const { category, comment } = parseComment(review.comment);
+    return {
+      ...review,
+      category,
+      comment
+    };
+  });
+
+  res.json({ success: true, data: { reviews: formattedReviews, pagination: { total: count, page: parseInt(page) } } });
 };
 
 export const createReview = async (req, res) => {
-  const { course_id, rating, comment } = req.body;
+  const { course_id, rating, comment, category } = req.body;
   const student_id = req.user.id;
 
   // Must be enrolled
@@ -32,8 +70,10 @@ export const createReview = async (req, res) => {
 
   if (existing) return res.status(409).json({ success: false, message: 'You already reviewed this course' });
 
+  const dbComment = formatComment(category, comment);
+
   const { data, error } = await supabase
-    .from('reviews').insert({ course_id, student_id, rating, comment }).select().single();
+    .from('reviews').insert({ course_id, student_id, rating, comment: dbComment }).select().single();
 
   if (error) return res.status(500).json({ success: false, message: 'Failed to submit review' });
 
@@ -46,22 +86,40 @@ export const createReview = async (req, res) => {
     await supabase.from('courses').update({ rating_avg: avg.toFixed(1), rating_count: allRatings.length }).eq('id', course_id);
   }
 
-  res.status(201).json({ success: true, data });
+  const parsed = parseComment(data.comment);
+  res.status(201).json({
+    success: true,
+    data: {
+      ...data,
+      category: parsed.category,
+      comment: parsed.comment
+    }
+  });
 };
 
 export const updateReview = async (req, res) => {
   const { id } = req.params;
-  const { rating, comment } = req.body;
+  const { rating, comment, category } = req.body;
 
   const { data: review } = await supabase.from('reviews').select('student_id').eq('id', id).single();
   if (!review || review.student_id !== req.user.id) {
     return res.status(403).json({ success: false, message: 'Unauthorized' });
   }
 
-  const { data, error } = await supabase.from('reviews').update({ rating, comment }).eq('id', id).select().single();
+  const dbComment = formatComment(category, comment);
+
+  const { data, error } = await supabase.from('reviews').update({ rating, comment: dbComment }).eq('id', id).select().single();
   if (error) return res.status(500).json({ success: false, message: 'Update failed' });
 
-  res.json({ success: true, data });
+  const parsed = parseComment(data.comment);
+  res.json({
+    success: true,
+    data: {
+      ...data,
+      category: parsed.category,
+      comment: parsed.comment
+    }
+  });
 };
 
 export const deleteReview = async (req, res) => {

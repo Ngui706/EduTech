@@ -15,6 +15,7 @@ import Courses from './pages/Courses';
 import CourseDetail from './pages/CourseDetail';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import VerifyCertificate from './pages/VerifyCertificate';
 
 // Pages - Auth
 import Login from './pages/auth/Login';
@@ -112,6 +113,8 @@ export default function App() {
           <Route path="/courses/:id" element={<CourseDetail />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/verify-certificate" element={<VerifyCertificate />} />
+          <Route path="/verify-certificate/:code" element={<VerifyCertificate />} />
 
           {/* Auth Routes */}
           <Route path="/login" element={<Login />} />

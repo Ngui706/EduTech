@@ -3,7 +3,6 @@ import { authenticate } from '../middleware/auth.middleware.js';
 import { supabase } from '../config/supabase.js';
 
 const router = Router();
-router.use(authenticate);
 
 // GET /api/certificates/:code/verify (public)
 router.get('/verify/:code', async (req, res) => {
@@ -16,5 +15,7 @@ router.get('/verify/:code', async (req, res) => {
   if (error || !data) return res.status(404).json({ success: false, message: 'Certificate not found' });
   res.json({ success: true, data });
 });
+
+router.use(authenticate);
 
 export default router;

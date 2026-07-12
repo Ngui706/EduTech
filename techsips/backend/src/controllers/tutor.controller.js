@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../config/supabase.js';
 import { generateTokenPair } from '../config/jwt.js';
+import { sendEmail, getAdminEmails } from '../config/email.js';
 
 // ── Register Tutor ────────────────────────────────────────────────────────────
 export const registerTutor = async (req, res) => {
@@ -41,9 +42,9 @@ export const registerTutor = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Profile creation failed' });
   }
 
-  // Notify admins
-  const { data: admins } = await supabase.from('users').select('id').eq('role', 'admin');
-  if (admins) {
+  // Notify admins (in-app + email)
+  const { data: admins } = await supabase.from('users').select('id, email').eq('role', 'admin');
+  if (admins && admins.length > 0) {
     const notifications = admins.map((admin) => ({
       user_id: admin.id,
       title: 'New Tutor Application',
@@ -52,6 +53,31 @@ export const registerTutor = async (req, res) => {
       link: '/dashboard/admin/tutors',
     }));
     await supabase.from('notifications').insert(notifications);
+
+    // Send email to each admin
+    const adminEmailList = admins.map((a) => a.email).filter(Boolean);
+    for (const adminEmail of adminEmailList) {
+      await sendEmail({
+        to: adminEmail,
+        subject: '🆕 New Tutor Application – TechSips',
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+            <h2 style="color:#6366f1;">New Tutor Application</h2>
+            <p>A new tutor has submitted an application on <strong>TechSips</strong> and is pending your review.</p>
+            <table style="border-collapse:collapse;width:100%;">
+              <tr><td style="padding:8px;border:1px solid #e2e8f0;"><strong>Name</strong></td><td style="padding:8px;border:1px solid #e2e8f0;">${full_name}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #e2e8f0;"><strong>Email</strong></td><td style="padding:8px;border:1px solid #e2e8f0;">${email}</td></tr>
+              <tr><td style="padding:8px;border:1px solid #e2e8f0;"><strong>Experience</strong></td><td style="padding:8px;border:1px solid #e2e8f0;">${experience_years || 'N/A'} years</td></tr>
+            </table>
+            <br/>
+            <a href="${process.env.FRONTEND_URL || 'https://edu-tech-virid.vercel.app'}/dashboard/admin/tutors"
+               style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;">
+              Review Application
+            </a>
+            <p style="color:#94a3b8;font-size:12px;margin-top:24px;">TechSips Admin Notifications</p>
+          </div>`,
+      });
+    }
   }
 
   await supabase.from('activity_logs').insert({ user_id: userId, action: 'TUTOR_REGISTERED' });
@@ -302,8 +328,12 @@ export const submitCourseForApproval = async (req, res) => {
 
   await supabase.from('courses').update({ status: 'pending' }).eq('id', id);
 
-  const { data: admins } = await supabase.from('users').select('id').eq('role', 'admin');
-  if (admins) {
+  // Fetch course title and tutor name for the email
+  const { data: courseDetails } = await supabase
+    .from('courses').select('title, users!tutor_id(full_name, email)').eq('id', id).single();
+
+  const { data: admins } = await supabase.from('users').select('id, email').eq('role', 'admin');
+  if (admins && admins.length > 0) {
     await supabase.from('notifications').insert(
       admins.map((a) => ({
         user_id: a.id,
@@ -313,6 +343,30 @@ export const submitCourseForApproval = async (req, res) => {
         link: '/dashboard/admin/courses',
       }))
     );
+
+    // Send email to each admin
+    for (const admin of admins) {
+      if (admin.email) {
+        await sendEmail({
+          to: admin.email,
+          subject: '📚 New Course Submitted for Review – TechSips',
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+              <h2 style="color:#6366f1;">📚 Course Submission for Review</h2>
+              <p>A tutor has submitted a new course for your review on <strong>TechSips</strong>.</p>
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+                <p style="margin:0;"><strong>Course Title:</strong> ${courseDetails?.title || 'New Course'}</p>
+                <p style="margin:8px 0 0;"><strong>Tutor:</strong> ${courseDetails?.users?.full_name || 'Unknown'} (${courseDetails?.users?.email || ''})</p>
+              </div>
+              <a href="${process.env.FRONTEND_URL || 'https://edu-tech-virid.vercel.app'}/dashboard/admin/courses"
+                 style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;">
+                Review Course
+              </a>
+              <p style="color:#94a3b8;font-size:12px;margin-top:24px;">TechSips Admin Notifications</p>
+            </div>`,
+        });
+      }
+    }
   }
 
   res.json({ success: true, message: 'Course submitted for review' });

@@ -43,10 +43,10 @@ export default function Landing() {
     async function fetchData() {
       try {
         const [featuredRes, catsRes] = await Promise.all([
-          api.get('/courses'),
+          api.get('/courses/featured'),
           api.get('/categories')
         ]);
-        setFeatured(featuredRes.data.data.courses || []);
+        setFeatured(featuredRes.data.data || []);
         setCategories(catsRes.data.data || []);
       } catch (err) {
         console.warn('Could not load landing data, using fallbacks');

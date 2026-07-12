@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Award, Download, Calendar, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import jsPDF from 'jspdf';
 import toast from 'react-hot-toast';
@@ -152,13 +153,24 @@ export default function StudentCertificates() {
                   <Calendar className="h-3.5 w-3.5" />
                   <span>{new Date(cert.issued_at).toLocaleDateString()}</span>
                 </span>
-                <button
-                  onClick={() => handleDownload(cert)}
-                  className="flex items-center space-x-1 px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-semibold"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Download PDF</span>
-                </button>
+                <div className="flex items-center space-x-2">
+                  <Link
+                    to={`/verify-certificate/${cert.certificate_code}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-1 px-3 py-1.5 border border-slate-200 dark:border-darkBorder hover:bg-slate-50 dark:hover:bg-darkCard rounded-lg font-semibold"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span>Verify Online</span>
+                  </Link>
+                  <button
+                    onClick={() => handleDownload(cert)}
+                    className="flex items-center space-x-1 px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-semibold"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Download PDF</span>
+                  </button>
+                </div>
               </div>
             </div>
           ))}

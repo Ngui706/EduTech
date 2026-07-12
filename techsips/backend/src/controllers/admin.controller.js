@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import { sendEmail } from '../config/email.js';
 
 // ── Dashboard Stats ───────────────────────────────────────────────────────────
 export const getAdminDashboard = async (req, res) => {
@@ -73,7 +74,7 @@ export const verifyTutor = async (req, res) => {
 
   await supabase.from('tutors').update({ verification_status: status, rejection_reason }).eq('user_id', userId);
 
-  // Notify tutor
+  // Notify tutor via in-app notification
   const message = status === 'approved'
     ? '🎉 Congratulations! Your tutor application has been approved. You can now create courses.'
     : `Your tutor application was rejected. Reason: ${rejection_reason || 'Does not meet requirements'}`;
@@ -85,6 +86,29 @@ export const verifyTutor = async (req, res) => {
     type: 'verification',
     link: '/dashboard/tutor',
   });
+
+  // Send tutor an email about the decision
+  const { data: tutorUser } = await supabase.from('users').select('email, full_name').eq('id', userId).single();
+  if (tutorUser) {
+    await sendEmail({
+      to: tutorUser.email,
+      subject: status === 'approved' ? '🎉 You are Approved as a Tutor – TechSips' : 'Tutor Application Update – TechSips',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <h2 style="color:${status === 'approved' ? '#10b981' : '#ef4444'};">
+            ${status === 'approved' ? '🎉 Application Approved!' : 'Application Update'}
+          </h2>
+          <p>Dear <strong>${tutorUser.full_name}</strong>,</p>
+          <p>${message}</p>
+          ${status === 'approved' ? `
+            <a href="${process.env.FRONTEND_URL || 'https://edu-tech-virid.vercel.app'}/dashboard/tutor"
+               style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:16px;">
+              Go to Your Dashboard
+            </a>` : ''}
+          <p style="color:#94a3b8;font-size:12px;margin-top:24px;">TechSips – Empowering Africa's Tech Talent</p>
+        </div>`,
+    });
+  }
 
   await supabase.from('activity_logs').insert({
     user_id: req.user.id,
@@ -147,6 +171,26 @@ export const approveCourse = async (req, res) => {
     link: `/dashboard/tutor/courses`,
   });
 
+  // Send email to tutor about course approval
+  const { data: tutorUser } = await supabase.from('users').select('email, full_name').eq('id', course.tutor_id).single();
+  if (tutorUser) {
+    await sendEmail({
+      to: tutorUser.email,
+      subject: '✅ Your Course is Approved – TechSips',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <h2 style="color:#10b981;">✅ Course Approved &amp; Live!</h2>
+          <p>Dear <strong>${tutorUser.full_name}</strong>,</p>
+          <p>Your course <strong>"${course.title}"</strong> has been reviewed and <strong>approved</strong>. It is now publicly visible on TechSips.</p>
+          <a href="${process.env.FRONTEND_URL || 'https://edu-tech-virid.vercel.app'}/dashboard/tutor/courses"
+             style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:16px;">
+            View Your Courses
+          </a>
+          <p style="color:#94a3b8;font-size:12px;margin-top:24px;">TechSips – Empowering Africa's Tech Talent</p>
+        </div>`,
+    });
+  }
+
   await supabase.from('activity_logs').insert({
     user_id: req.user.id, action: 'COURSE_APPROVED', details: { course_id: id },
   });
@@ -170,6 +214,28 @@ export const rejectCourse = async (req, res) => {
     type: 'course_rejected',
     link: `/dashboard/tutor/courses/${id}`,
   });
+
+  // Send email to tutor about course rejection
+  const { data: tutorUser } = await supabase.from('users').select('email, full_name').eq('id', course.tutor_id).single();
+  if (tutorUser) {
+    await sendEmail({
+      to: tutorUser.email,
+      subject: 'Course Submission Update – TechSips',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+          <h2 style="color:#ef4444;">Course Submission Update</h2>
+          <p>Dear <strong>${tutorUser.full_name}</strong>,</p>
+          <p>Your course <strong>"${course.title}"</strong> was not approved at this time.</p>
+          <p><strong>Reason:</strong> ${reason || 'Does not meet current quality standards.'}</p>
+          <p>Please review the feedback, make necessary improvements, and resubmit for consideration.</p>
+          <a href="${process.env.FRONTEND_URL || 'https://edu-tech-virid.vercel.app'}/dashboard/tutor/courses"
+             style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:16px;">
+            Edit Your Course
+          </a>
+          <p style="color:#94a3b8;font-size:12px;margin-top:24px;">TechSips – Empowering Africa's Tech Talent</p>
+        </div>`,
+    });
+  }
 
   res.json({ success: true, message: 'Course rejected' });
 };

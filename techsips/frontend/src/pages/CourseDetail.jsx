@@ -57,6 +57,7 @@ export default function CourseDetail() {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
+  const [reviewCategory, setReviewCategory] = useState('Overall Experience');
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
@@ -71,10 +72,12 @@ export default function CourseDetail() {
         course_id: course.id,
         rating: reviewRating,
         comment: reviewComment.trim(),
+        category: reviewCategory,
       });
       toast.success('Thank you for your review!');
       setReviewComment('');
       setReviewRating(5);
+      setReviewCategory('Overall Experience');
       fetchCourseDetail();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit review.');
@@ -342,47 +345,82 @@ export default function CourseDetail() {
               <div className="space-y-8 animate-fade-in">
                 {/* Submit Review Form */}
                 {course.isEnrolled && !course.reviews?.some(r => r.users?.id === user?.id) && (
-                  <form onSubmit={handleReviewSubmit} className="glass-card p-6 space-y-4">
+                  <form onSubmit={handleReviewSubmit} className="glass-card p-6 space-y-5">
                     <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Write a Review</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1">Rating</label>
-                        <div className="flex items-center space-x-1">
+                    
+                    <div className="space-y-4">
+                      {/* Rating selection */}
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Rating</label>
+                        <div className="flex items-center space-x-1.5">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <button
                               type="button"
                               key={star}
                               onClick={() => setReviewRating(star)}
-                              className="focus:outline-none"
+                              className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
                             >
                               <Star
-                                className={`h-6 w-6 ${
+                                className={`h-7 w-7 ${
                                   star <= reviewRating
                                     ? 'text-amber-400 fill-amber-400'
-                                    : 'text-slate-350 dark:text-slate-600'
+                                    : 'text-slate-300 dark:text-slate-700'
                                 }`}
                               />
                             </button>
                           ))}
                         </div>
                       </div>
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-slate-500">Comment (Minimum 10 characters)</label>
+
+                      {/* Category selection */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Review Category</label>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            'Course Content',
+                            'Instructor Quality',
+                            'Pacing & Structure',
+                            'Exercises & Quizzes',
+                            'Overall Experience'
+                          ].map((cat) => {
+                            const isSelected = reviewCategory === cat;
+                            return (
+                              <button
+                                type="button"
+                                key={cat}
+                                onClick={() => setReviewCategory(cat)}
+                                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                                  isSelected
+                                    ? 'bg-brand-500 text-white border-brand-500 shadow-md shadow-brand-500/25'
+                                    : 'border-slate-200 dark:border-darkBorder bg-slate-50 dark:bg-darkBg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-darkCard'
+                                }`}
+                              >
+                                {cat}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Comment textarea */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">Comment (Minimum 10 characters)</label>
                         <textarea
                           value={reviewComment}
                           onChange={(e) => setReviewComment(e.target.value)}
                           rows={4}
-                          className="w-full px-4 py-2 border border-slate-200 dark:border-darkBorder bg-slate-50 dark:bg-darkBg rounded-xl text-sm focus:outline-none text-slate-800 dark:text-white"
+                          className="w-full px-4 py-3 border border-slate-200 dark:border-darkBorder bg-slate-50 dark:bg-darkBg rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 text-slate-800 dark:text-white"
                           placeholder="Share your experience taking this course..."
                           required
                           minLength={10}
                           maxLength={1000}
                         />
                       </div>
+
                       <button
                         type="submit"
                         disabled={submittingReview || reviewComment.trim().length < 10}
-                        className="px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl text-sm disabled:opacity-50 transition-colors shadow-md shadow-brand-500/10"
+                        className="w-full sm:w-auto px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-2xl text-sm disabled:opacity-50 transition-all shadow-lg shadow-brand-500/10 hover:shadow-brand-500/25"
                       >
                         {submittingReview ? 'Submitting...' : 'Submit Review'}
                       </button>
@@ -430,6 +468,11 @@ export default function CourseDetail() {
                                     />
                                   ))}
                                 </div>
+                                {rev.category && (
+                                  <span className="inline-block mt-1.5 text-[9px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-lg bg-brand-500/10 text-brand-500 dark:text-brand-400 border border-brand-500/10">
+                                    {rev.category}
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <span className="text-xs text-slate-450 dark:text-slate-500">

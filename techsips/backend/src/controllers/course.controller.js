@@ -1,4 +1,6 @@
 import { supabase } from '../config/supabase.js';
+import { sendEmail } from '../config/email.js';
+import { parseComment } from './review.controller.js';
 
 // ── Get All Courses (paginated + filtered) ────────────────────────────────────
 export const getCourses = async (req, res) => {
@@ -124,7 +126,16 @@ export const getCourseById = async (req, res) => {
     .order('created_at', { ascending: false })
     .limit(10);
 
-  res.json({ success: true, data: { ...course, isEnrolled, reviews: reviews || [] } });
+  const formattedReviews = (reviews || []).map((review) => {
+    const { category, comment } = parseComment(review.comment);
+    return {
+      ...review,
+      category,
+      comment
+    };
+  });
+
+  res.json({ success: true, data: { ...course, isEnrolled, reviews: formattedReviews } });
 };
 
 // ── Get Course Content (enrolled students only) ───────────────────────────────
@@ -235,6 +246,31 @@ export const enrollInCourse = async (req, res) => {
       type: 'enrollment',
       link: `/dashboard/tutor/courses`,
     });
+
+    // Send email to tutor about the new enrollment
+    const { data: tutorUser } = await supabase.from('users').select('email, full_name').eq('id', courseData.tutor_id).single();
+    const { data: studentUser } = await supabase.from('users').select('full_name, email').eq('id', student_id).single();
+    if (tutorUser) {
+      await sendEmail({
+        to: tutorUser.email,
+        subject: `🎓 New Student Enrolled – ${courseData.title}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+            <h2 style="color:#6366f1;">🎓 New Enrollment!</h2>
+            <p>Dear <strong>${tutorUser.full_name}</strong>,</p>
+            <p>A new student has enrolled in your course:</p>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin:16px 0;">
+              <p style="margin:0;"><strong>Course:</strong> ${courseData.title}</p>
+              ${studentUser ? `<p style="margin:8px 0 0;"><strong>Student:</strong> ${studentUser.full_name} (${studentUser.email})</p>` : ''}
+            </div>
+            <a href="${process.env.FRONTEND_URL || 'https://edu-tech-virid.vercel.app'}/dashboard/tutor/students"
+               style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;">
+              View Your Students
+            </a>
+            <p style="color:#94a3b8;font-size:12px;margin-top:24px;">TechSips – Empowering Africa's Tech Talent</p>
+          </div>`,
+      });
+    }
   }
 
   res.status(201).json({ success: true, message: 'Enrolled successfully', data: enrollment });
