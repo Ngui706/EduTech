@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Plus, ShieldCheck, HelpCircle, AlertCircle, Trash2, Edit3, Send, Sparkles } from 'lucide-react';
+import { BookOpen, Plus, ShieldCheck, HelpCircle, AlertCircle, Trash2, Edit3, Send, Sparkles, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 
@@ -8,12 +8,12 @@ export default function TutorCourses() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchCourses();
-  }, []);
-
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async (showRefreshingSpinner = false) => {
+    if (showRefreshingSpinner) {
+      setRefreshing(true);
+    }
     try {
       const response = await api.get('/tutors/me/courses');
       setCourses(response.data.data || []);
@@ -21,8 +21,18 @@ export default function TutorCourses() {
       toast.error('Failed to load courses.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchCourses();
+    // Auto-sync every 30 seconds
+    const intervalId = setInterval(() => {
+      fetchCourses();
+    }, 30000);
+    return () => clearInterval(intervalId);
+  }, [fetchCourses]);
 
   const handleSubmitForReview = async (id) => {
     if (processing) return;
@@ -84,13 +94,24 @@ export default function TutorCourses() {
           <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">My Course Catalog</h1>
           <p className="text-sm text-slate-500 mt-1">Manage draft syllabi, submissions, and marketing promotions.</p>
         </div>
-        <Link
-          to="/dashboard/tutor/courses/create"
-          className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-brand-500/15 hover:shadow-brand-500/25"
-        >
-          <Plus className="h-4.5 w-4.5" />
-          <span>New Course</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => fetchCourses(true)}
+            disabled={refreshing || processing}
+            className="flex items-center justify-center space-x-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-darkCard dark:hover:bg-darkBorder text-slate-700 dark:text-white rounded-xl text-sm font-bold transition-all border border-slate-200 dark:border-darkBorder"
+            title="Refresh course list"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+          <Link
+            to="/dashboard/tutor/courses/create"
+            className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-brand-500/15 hover:shadow-brand-500/25"
+          >
+            <Plus className="h-4.5 w-4.5" />
+            <span>New Course</span>
+          </Link>
+        </div>
       </div>
 
       {courses.length === 0 ? (

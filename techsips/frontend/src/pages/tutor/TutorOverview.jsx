@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Users, Star, TrendingUp, Plus, ArrowRight, ShieldCheck, HelpCircle } from 'lucide-react';
+import { BookOpen, Users, Star, TrendingUp, Plus, ArrowRight, ShieldCheck, HelpCircle, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
 import useAuthStore from '../../store/authStore';
 
@@ -8,20 +8,31 @@ export default function TutorOverview() {
   const { user } = useAuthStore();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchStats = useCallback(async (showRefreshingSpinner = false) => {
+    if (showRefreshingSpinner) {
+      setRefreshing(true);
+    }
+    try {
+      const { data } = await api.get('/tutors/me/dashboard');
+      setStats(data.data);
+    } catch (err) {
+      console.warn('Failed to load tutor overview stats');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchStats() {
-      try {
-        const { data } = await api.get('/tutors/me/dashboard');
-        setStats(data.data);
-      } catch (err) {
-        console.warn('Failed to load tutor overview stats');
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchStats();
-  }, []);
+    // Auto-sync every 30 seconds
+    const intervalId = setInterval(() => {
+      fetchStats();
+    }, 30000);
+    return () => clearInterval(intervalId);
+  }, [fetchStats]);
 
   if (loading) {
     return (
@@ -36,7 +47,21 @@ export default function TutorOverview() {
   const estimatedEarnings = totalEnrollments * 1500;
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Instructor Console</h2>
+        </div>
+        <button
+          onClick={() => fetchStats(true)}
+          disabled={refreshing}
+          className="flex items-center space-x-1.5 px-3.5 py-2 bg-slate-100 dark:bg-darkCard hover:bg-slate-200 dark:hover:bg-darkBorder border border-slate-200 dark:border-darkBorder rounded-xl text-xs font-bold text-slate-700 dark:text-white transition-all shadow-sm"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+        </button>
+      </div>
+
       {/* Welcome & Action Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-tr from-brand-600 to-indigo-500 p-6 sm:p-8 text-white shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="absolute top-[-20%] right-[-10%] w-[35%] aspect-square rounded-full bg-brand-400/20 blur-[70px]"></div>

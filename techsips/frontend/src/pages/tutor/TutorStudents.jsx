@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Users, GraduationCap, CheckCircle, Clock, Download, Calendar } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Users, GraduationCap, CheckCircle, Clock, Download, Calendar, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { jsPDF } from 'jspdf';
@@ -10,36 +10,34 @@ export default function TutorStudents() {
   const [students, setStudents] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchTutorCourses();
-  }, []);
-
-  useEffect(() => {
-    if (selectedCourseId) {
-      fetchEnrolledStudents(selectedCourseId);
-    } else {
-      setStudents([]);
-    }
-  }, [selectedCourseId]);
-
-  const fetchTutorCourses = async () => {
+  const fetchTutorCourses = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoadingCourses(true);
     try {
       const response = await api.get('/tutors/me/courses');
       const courseList = response.data.data || [];
       setCourses(courseList);
+      
+      // If we don't have a selectedCourseId, select the first one.
+      // If the previously selected course is deleted/no longer in courseList, reset selection to first course or empty.
       if (courseList.length > 0) {
-        setSelectedCourseId(courseList[0].id);
+        setSelectedCourseId((prev) => {
+          const exists = courseList.some((c) => c.id === prev);
+          return exists ? prev : courseList[0].id;
+        });
+      } else {
+        setSelectedCourseId('');
       }
     } catch {
       toast.error('Failed to load courses.');
     } finally {
       setLoadingCourses(false);
     }
-  };
+  }, []);
 
-  const fetchEnrolledStudents = async (courseId) => {
-    setLoadingStudents(true);
+  const fetchEnrolledStudents = useCallback(async (courseId, isSilent = false) => {
+    if (!isSilent) setLoadingStudents(true);
     try {
       const response = await api.get(`/tutors/me/courses/${courseId}/students`);
       setStudents(response.data.data || []);
@@ -48,6 +46,39 @@ export default function TutorStudents() {
     } finally {
       setLoadingStudents(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchTutorCourses();
+  }, [fetchTutorCourses]);
+
+  useEffect(() => {
+    if (selectedCourseId) {
+      fetchEnrolledStudents(selectedCourseId);
+    } else {
+      setStudents([]);
+    }
+  }, [selectedCourseId, fetchEnrolledStudents]);
+
+  // Auto-sync every 30 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchTutorCourses(true); // Silent course list update
+      if (selectedCourseId) {
+        fetchEnrolledStudents(selectedCourseId, true); // Silent student list update
+      }
+    }, 30000);
+    return () => clearInterval(intervalId);
+  }, [fetchTutorCourses, fetchEnrolledStudents, selectedCourseId]);
+
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    await fetchTutorCourses(true);
+    if (selectedCourseId) {
+      await fetchEnrolledStudents(selectedCourseId, true);
+    }
+    setRefreshing(false);
+    toast.success('Student tracker data refreshed!');
   };
 
   const downloadPDFReport = () => {
@@ -187,15 +218,26 @@ export default function TutorStudents() {
           <p className="text-sm text-slate-500 mt-1">Review learning analytics, progress percentages, and last login dates for your active cohorts.</p>
         </div>
         
-        {students.length > 0 && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={downloadPDFReport}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl text-xs shadow-md shadow-brand-500/10 transition-all hover:-translate-y-0.5"
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            className="flex items-center justify-center space-x-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-darkCard dark:hover:bg-darkBorder text-slate-700 dark:text-white rounded-xl text-sm font-bold transition-all border border-slate-200 dark:border-darkBorder"
+            title="Refresh student list"
           >
-            <Download className="h-4 w-4" />
-            <span>Download PDF Report</span>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
-        )}
+          {students.length > 0 && (
+            <button
+              onClick={downloadPDFReport}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl text-xs shadow-md shadow-brand-500/10 transition-all hover:-translate-y-0.5"
+            >
+              <Download className="h-4 w-4" />
+              <span>Download PDF Report</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Selector panel */}
