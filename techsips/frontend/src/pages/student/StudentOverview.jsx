@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, Award, CheckCircle, Clock, ChevronRight } from 'lucide-react';
 import api from '../../api/axios';
 import useAuthStore from '../../store/authStore';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function StudentOverview() {
   const { user } = useAuthStore();
@@ -112,7 +113,7 @@ export default function StudentOverview() {
                 <div className="flex items-start space-x-4">
                   <div className="w-16 h-12 bg-slate-100 dark:bg-darkBg rounded-lg overflow-hidden flex-shrink-0">
                     {enroll.courses?.thumbnail_url ? (
-                      <img src={enroll.courses.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                      <img src={resolveMediaUrl(enroll.courses.thumbnail_url)} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold text-xs">
                         TS

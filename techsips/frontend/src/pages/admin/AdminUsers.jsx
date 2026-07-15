@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast';
 import { jsPDF } from 'jspdf';
 import api from '../../api/axios';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -378,7 +379,7 @@ export default function AdminUsers() {
                       <div className="flex items-center space-x-3">
                         {user.avatar_url ? (
                           <img
-                            src={user.avatar_url}
+                            src={resolveMediaUrl(user.avatar_url)}
                             alt=""
                             className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-darkBorder"
                           />

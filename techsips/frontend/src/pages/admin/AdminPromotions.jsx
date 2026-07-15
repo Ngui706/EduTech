@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Sparkles, ShieldCheck, ShieldX, Clock, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function AdminPromotions() {
   const [promotions, setPromotions] = useState([]);
@@ -73,7 +74,7 @@ export default function AdminPromotions() {
               {/* Course Thumbnail */}
               <div className="sm:w-24 sm:h-20 aspect-video sm:aspect-auto bg-slate-100 dark:bg-darkBg rounded-xl overflow-hidden flex-shrink-0">
                 {promo.courses?.thumbnail_url ? (
-                  <img src={promo.courses.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                  <img src={resolveMediaUrl(promo.courses.thumbnail_url)} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-brand-500/10 text-brand-500 font-bold text-sm">TS</div>
                 )}

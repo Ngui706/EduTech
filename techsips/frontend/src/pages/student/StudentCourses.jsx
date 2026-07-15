@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Star, Award, Clock } from 'lucide-react';
 import api from '../../api/axios';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function StudentCourses() {
   const [enrollments, setEnrollments] = useState([]);
@@ -51,7 +52,7 @@ export default function StudentCourses() {
               <div className="aspect-video relative overflow-hidden bg-slate-100 dark:bg-darkBg">
                 {enroll.courses?.thumbnail_url ? (
                   <img
-                    src={enroll.courses.thumbnail_url}
+                    src={resolveMediaUrl(enroll.courses.thumbnail_url)}
                     alt=""
                     className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                   />

@@ -3,6 +3,7 @@ import { Users, GraduationCap, CheckCircle, Clock, Download, Calendar, RefreshCw
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { jsPDF } from 'jspdf';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function TutorStudents() {
   const [courses, setCourses] = useState([]);
@@ -300,7 +301,7 @@ export default function TutorStudents() {
                   <tr key={enroll.id} className="hover:bg-slate-50/50 dark:hover:bg-darkCard/30 transition-colors">
                     <td className="p-4 flex items-center space-x-3">
                       {enroll.users?.avatar_url ? (
-                        <img src={enroll.users.avatar_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                        <img src={resolveMediaUrl(enroll.users.avatar_url)} alt="" className="w-8 h-8 rounded-lg object-cover" />
                       ) : (
                         <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold text-xs">
                           {enroll.users?.full_name?.charAt(0).toUpperCase()}

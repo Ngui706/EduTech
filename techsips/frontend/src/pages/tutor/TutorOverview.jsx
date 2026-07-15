@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, Users, Star, TrendingUp, Plus, ArrowRight, ShieldCheck, HelpCircle, RefreshCw } from 'lucide-react';
 import api from '../../api/axios';
 import useAuthStore from '../../store/authStore';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function TutorOverview() {
   const { user } = useAuthStore();
@@ -143,7 +144,7 @@ export default function TutorOverview() {
               <div key={course.id} className="glass-card flex flex-col justify-between overflow-hidden group">
                 <div className="aspect-video bg-slate-100 dark:bg-darkBg relative overflow-hidden">
                   {course.thumbnail_url ? (
-                    <img src={course.thumbnail_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={resolveMediaUrl(course.thumbnail_url)} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
                     <div className="w-full h-full bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold">TS</div>
                   )}

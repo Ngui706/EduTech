@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, Plus, ShieldCheck, HelpCircle, AlertCircle, Trash2, Edit3, Send, Sparkles, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function TutorCourses() {
   const [courses, setCourses] = useState([]);
@@ -132,7 +133,7 @@ export default function TutorCourses() {
               <div className="aspect-video bg-slate-100 dark:bg-darkBg relative overflow-hidden">
                 {course.thumbnail_url ? (
                   <img
-                    src={course.thumbnail_url}
+                    src={resolveMediaUrl(course.thumbnail_url)}
                     alt=""
                     className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
                   />

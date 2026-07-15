@@ -25,7 +25,14 @@ export const getCourses = async (req, res) => {
       rating_count, enrollment_count, is_featured, is_sponsored,
       created_at,
       categories(id, name, slug),
-      users!tutor_id(id, full_name, avatar_url)
+      users!tutor_id(
+        id,
+        full_name,
+        avatar_url,
+        tutors(
+          verification_status
+        )
+      )
     `, { count: 'exact' })
     .eq('status', 'published')
     .eq('is_approved', true)
@@ -73,7 +80,8 @@ export const getCourseById = async (req, res) => {
       bio,
       whatsapp_number,
       linkedin_url,
-      portfolio_url
+      portfolio_url,
+      verification_status
     )
   ),
   course_modules(
@@ -284,7 +292,14 @@ export const getFeaturedCourses = async (req, res) => {
       id, title, subtitle, thumbnail_url, difficulty, duration_hours,
       rating_avg, rating_count, enrollment_count, is_sponsored,
       categories(id, name),
-      users!tutor_id(id, full_name, avatar_url)
+      users!tutor_id(
+        id,
+        full_name,
+        avatar_url,
+        tutors(
+          verification_status
+        )
+      )
     `)
     .eq('status', 'published')
     .eq('is_approved', true)
@@ -305,7 +320,14 @@ export const getSponsoredCourses = async (req, res) => {
       id, title, subtitle, thumbnail_url, difficulty, duration_hours,
       rating_avg, enrollment_count,
       categories(id, name),
-      users!tutor_id(id, full_name, avatar_url)
+      users!tutor_id(
+        id,
+        full_name,
+        avatar_url,
+        tutors(
+          verification_status
+        )
+      )
     `)
     .eq('status', 'published')
     .eq('is_approved', true)

@@ -47,9 +47,9 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:", "https://*.supabase.co", "https://images.unsplash.com"],
-      connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "http://localhost:*", "http://127.0.0.1:*"],
-      frameSrc: ["'none'"],
+      imgSrc: ["'self'", "data:", "blob:", "https://*.supabase.co", "https://images.unsplash.com", "https://edutech-sqhs.onrender.com"],
+      connectSrc: ["'self'", "https://*.supabase.co", "wss://*.supabase.co", "http://localhost:*", "http://127.0.0.1:*", "https://edutech-sqhs.onrender.com"],
+      frameSrc: ["'self'", "https://*.supabase.co", "https://edutech-sqhs.onrender.com", "blob:"],
       objectSrc: ["'none'"],
     },
   },
@@ -88,10 +88,14 @@ const allowedOrigins = [
   'http://localhost:5174',
   'http://localhost:5001',
   'http://localhost:3000',
+  'https://edutech-sqhs.onrender.com',
 ];
 if (process.env.FRONTEND_URL) {
-  // Strip trailing slash
-  allowedOrigins.push(process.env.FRONTEND_URL.replace(/\/$/, ''));
+  // Strip trailing slash and add to allowed origins
+  const frontendUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+  if (!allowedOrigins.includes(frontendUrl)) {
+    allowedOrigins.push(frontendUrl);
+  }
 }
 app.use(cors({
   origin: allowedOrigins,

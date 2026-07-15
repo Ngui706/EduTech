@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Search, SlidersHorizontal, Star, BookOpen, Clock, Users, ArrowRight } from 'lucide-react';
 import api from '../api/axios';
+import { resolveMediaUrl } from '../utils/resolveUrl';
 
 export default function Courses() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -158,7 +159,7 @@ export default function Courses() {
                     <div className="aspect-video relative overflow-hidden bg-slate-100 dark:bg-darkBg">
                       {course.thumbnail_url ? (
                         <img
-                          src={course.thumbnail_url}
+                          src={resolveMediaUrl(course.thumbnail_url)}
                           alt={course.title}
                           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                         />
@@ -205,13 +206,20 @@ export default function Courses() {
                       <div className="mt-5 pt-4 border-t border-slate-100 dark:border-darkBorder/60 flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           {course.users?.avatar_url ? (
-                            <img src={course.users.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" />
+                            <img src={resolveMediaUrl(course.users.avatar_url)} alt="" className="h-6 w-6 rounded-full object-cover" />
                           ) : (
                             <div className="h-6 w-6 rounded-full bg-slate-200 dark:bg-darkBg flex items-center justify-center font-bold text-[10px]">
                               {course.users?.full_name?.charAt(0)}
                             </div>
                           )}
-                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{course.users?.full_name}</span>
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                            <span>{course.users?.full_name}</span>
+                            {course.users?.tutors?.[0]?.verification_status === 'approved' && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-[9px] font-extrabold border border-emerald-500/20 leading-none">
+                                Verified
+                              </span>
+                            )}
+                          </span>
                         </div>
                         <span className="text-sm font-bold text-slate-900 dark:text-white">
                           {course.is_free ? 'Free' : `${course.price} KES`}

@@ -3,6 +3,7 @@ import { Camera, User, Phone, FileText, Globe, Linkedin, ShieldCheck, HelpCircle
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import api from '../../api/axios';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function TutorSettings() {
   const { user, checkAuth } = useAuthStore();
@@ -115,7 +116,7 @@ export default function TutorSettings() {
           <div className="relative">
             {formData.avatar_url ? (
               <img
-                src={formData.avatar_url}
+                src={resolveMediaUrl(formData.avatar_url)}
                 alt=""
                 className="w-24 h-24 rounded-2xl object-cover border border-slate-200 dark:border-darkBorder"
               />

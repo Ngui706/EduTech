@@ -40,6 +40,50 @@ export default function CoursePlayer() {
   const [completing, setCompleting] = useState(false);
   const [togglingProgress, setTogglingProgress] = useState(false);
 
+  // Reading pattern tracking and active timer
+  const [timeSpent, setTimeSpent] = useState(0);
+  const [isTabActive, setIsTabActive] = useState(true);
+
+  // Required reading/watching time logic
+  const getRequiredSeconds = useCallback((lesson) => {
+    if (!lesson) return 0;
+    // Fallback to 1 minute default if duration_mins is not specified or 0
+    return (lesson.duration_mins || 1) * 60;
+  }, []);
+
+  const requiredSeconds = activeLesson ? getRequiredSeconds(activeLesson) : 0;
+  const isTimeRequirementMet = timeSpent >= requiredSeconds || !!(data?.lessonProgress?.some(p => p.lesson_id === activeLesson?.id && p.completed));
+
+  // Page visibility API listener
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden);
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Timer interval logic: increment only if tab is active and lesson is not already completed
+  useEffect(() => {
+    if (!activeLesson) return;
+    
+    // Reset time spent when active lesson changes
+    setTimeSpent(0);
+
+    const isAlreadyCompleted = data?.lessonProgress?.some(p => p.lesson_id === activeLesson.id && p.completed);
+    if (isAlreadyCompleted) return;
+
+    const interval = setInterval(() => {
+      if (isTabActive) {
+        setTimeSpent((prev) => prev + 1);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeLesson, isTabActive, data?.lessonProgress]);
+
   // Keep a ref so fetchCourseContent can read the latest activeLesson without being a dependency
   const activeLessonRef = useRef(activeLesson);
   useEffect(() => { activeLessonRef.current = activeLesson; }, [activeLesson]);
@@ -79,14 +123,24 @@ export default function CoursePlayer() {
   const handleLessonToggle = async (lessonId) => {
     if (!data?.enrollment?.id) return;
     if (togglingProgress) return;
-    setTogglingProgress(true);
     const current = isLessonCompleted(lessonId);
+
+    // Enforce study time requirement when marking complete
+    if (!current && !isTimeRequirementMet) {
+      const remaining = Math.max(0, requiredSeconds - timeSpent);
+      const mins = Math.floor(remaining / 60);
+      const secs = remaining % 60;
+      toast.error(`Please study this lesson for another ${mins}m ${secs}s before marking it as complete.`);
+      return;
+    }
+
+    setTogglingProgress(true);
     try {
       await api.post('/students/progress', {
         lesson_id: lessonId,
         enrollment_id: data.enrollment.id,
         completed: !current,
-        watch_time_secs: 0
+        watch_time_secs: timeSpent
       });
       toast.success(!current ? '✅ Lesson marked as completed!' : 'Progress updated');
       await fetchCourseContent();
@@ -362,31 +416,31 @@ export default function CoursePlayer() {
                     Review the attached PDF document below. Read carefully before proceeding to the quiz.
                   </p>
                   {activeLesson.content_url ? (
-                    <div className="mt-2 p-4 bg-slate-50 dark:bg-darkCard rounded-2xl border dark:border-darkBorder flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-brand-500/10 rounded-xl">
-                          <FileText className="h-6 w-6 text-brand-500" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm">Course Document</p>
-                          <p className="text-xs text-slate-400">PDF — Click to open</p>
-                        </div>
+                    <div className="space-y-4">
+                      <div className="w-full h-[550px] bg-slate-150 dark:bg-darkBg rounded-2xl overflow-hidden border dark:border-darkBorder relative">
+                        <iframe
+                          src={`${normalizeUrl(activeLesson.content_url)}#toolbar=0`}
+                          title={activeLesson.title}
+                          className="w-full h-full"
+                          frameBorder="0"
+                        />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={normalizeUrl(activeLesson.content_url)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-2 bg-brand-500/10 text-brand-500 hover:bg-brand-500 hover:text-white rounded-xl text-xs font-bold transition-all"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" /> Open
-                        </a>
+                      <div className="p-4 bg-slate-50 dark:bg-darkCard rounded-2xl border dark:border-darkBorder flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-brand-500/10 rounded-xl">
+                            <FileText className="h-6 w-6 text-brand-500" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">Course Document</p>
+                            <p className="text-xs text-slate-400">PDF Document</p>
+                          </div>
+                        </div>
                         <a
                           href={normalizeUrl(activeLesson.content_url)}
                           download
-                          className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-darkBg hover:bg-slate-200 rounded-xl text-xs font-bold transition-all"
+                          className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-500/10 text-brand-500 hover:bg-brand-500 hover:text-white rounded-xl text-xs font-bold transition-all"
                         >
-                          <Download className="h-3.5 w-3.5" /> Download
+                          <Download className="h-3.5 w-3.5" /> Download PDF
                         </a>
                       </div>
                     </div>
@@ -417,21 +471,57 @@ export default function CoursePlayer() {
               )}
             </div>
 
+            {/* Timer / Progress Banner */}
+            {!isLessonCompleted(activeLesson.id) && (
+              <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all ${
+                isTimeRequirementMet 
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' 
+                  : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400'
+              }`}>
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-white/50 dark:bg-darkCard rounded-xl animate-pulse">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">
+                      {isTimeRequirementMet 
+                        ? '✅ Time requirement met! You can now mark this lesson as completed.' 
+                        : '⏱️ Study Requirement Active'}
+                    </p>
+                    <p className="text-xs opacity-80 mt-0.5">
+                      {!isTabActive && '⚠️ Timer paused (tab is inactive)'}
+                      {isTabActive && !isTimeRequirementMet && `Please study for at least ${activeLesson.duration_mins || 1} minute(s).`}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-base font-mono font-extrabold">
+                    {Math.floor(timeSpent / 60)}:{(timeSpent % 60).toString().padStart(2, '0')}
+                  </span>
+                  <span className="text-xs opacity-60 ml-1">
+                    / {activeLesson.duration_mins || 1}:00
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* ── Title bar + Mark completed ────────────────────────────── */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">{activeLesson.title}</h1>
                 <p className="text-xs text-slate-400 mt-1">
-                  {typeInfo?.label} · {activeLesson.duration_mins || 10} minutes
+                  {typeInfo?.label} · {activeLesson.duration_mins || 1} minutes
                 </p>
               </div>
               <button
                 onClick={() => handleLessonToggle(activeLesson.id)}
-                disabled={togglingProgress}
-                className={`flex items-center justify-center space-x-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 disabled:opacity-60 ${
+                disabled={togglingProgress || (!isLessonCompleted(activeLesson.id) && !isTimeRequirementMet)}
+                className={`flex items-center justify-center space-x-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
                   isLessonCompleted(activeLesson.id)
                     ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border border-emerald-500/30'
-                    : 'bg-brand-500 text-white shadow-lg shadow-brand-500/20 hover:bg-brand-600'
+                    : isTimeRequirementMet
+                    ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/20 hover:bg-brand-600'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 border border-slate-350 dark:border-slate-700'
                 }`}
               >
                 {isLessonCompleted(activeLesson.id) ? (

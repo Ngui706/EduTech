@@ -4,6 +4,7 @@ import { Star, Clock, Globe, BarChart2, CheckCircle2, ChevronRight, Lock, PlayCi
 import api from '../api/axios';
 import useAuthStore from '../store/authStore';
 import toast from 'react-hot-toast';
+import { resolveMediaUrl } from '../utils/resolveUrl';
 
 export default function CourseDetail() {
   const { id } = useParams();
@@ -146,7 +147,7 @@ export default function CourseDetail() {
             {/* Created by */}
             <div className="flex items-center space-x-3 pt-2">
               {course.users?.avatar_url ? (
-                <img src={course.users.avatar_url} alt="" className="h-10 w-10 rounded-xl object-cover border border-slate-200 dark:border-darkBorder" />
+                <img src={resolveMediaUrl(course.users.avatar_url)} alt="" className="h-10 w-10 rounded-xl object-cover border border-slate-200 dark:border-darkBorder" />
               ) : (
                 <div className="h-10 w-10 rounded-xl bg-brand-500 text-white flex items-center justify-center font-bold">
                   {course.users?.full_name?.charAt(0).toUpperCase()}
@@ -154,7 +155,14 @@ export default function CourseDetail() {
               )}
               <div>
                 <div className="text-xs text-slate-400">Instructor</div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-white">{course.users?.full_name}</div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span>{course.users?.full_name}</span>
+                  {course.users?.tutors?.[0]?.verification_status === 'approved' && (
+                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-[10px] font-extrabold border border-emerald-500/20 leading-none">
+                      <CheckCircle2 className="h-3 w-3" /> Verified
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -164,7 +172,7 @@ export default function CourseDetail() {
             <div className="glass-card p-6 sticky top-24 space-y-6 shadow-2xl border border-slate-200 dark:border-darkBorder">
               <div className="aspect-video rounded-xl bg-slate-900 overflow-hidden relative border dark:border-darkBorder flex items-center justify-center">
                 {course.thumbnail_url ? (
-                  <img src={course.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                  <img src={resolveMediaUrl(course.thumbnail_url)} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <PlayCircle className="h-12 w-12 text-brand-500 opacity-60" />
                 )}
@@ -333,7 +341,14 @@ export default function CourseDetail() {
             {/* Instructor Tab */}
             {activeTab === 'about' && (
               <div className="glass-card p-6 space-y-4">
-                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200">About {course.users?.full_name}</h3>
+                <h3 className="font-bold text-lg text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <span>About {course.users?.full_name}</span>
+                  {course.users?.tutors?.[0]?.verification_status === 'approved' && (
+                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full text-[10px] font-extrabold border border-emerald-500/20 leading-none">
+                      <CheckCircle2 className="h-3 w-3" /> Verified
+                    </span>
+                  )}
+                </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
                   {course.users?.bio || 'This instructor has not shared a bio yet.'}
                 </p>
@@ -443,7 +458,7 @@ export default function CourseDetail() {
                             <div className="flex items-center space-x-3">
                               {rev.users?.avatar_url ? (
                                 <img
-                                  src={rev.users.avatar_url}
+                                  src={resolveMediaUrl(rev.users.avatar_url)}
                                   alt=""
                                   className="h-10 w-10 rounded-full object-cover"
                                 />

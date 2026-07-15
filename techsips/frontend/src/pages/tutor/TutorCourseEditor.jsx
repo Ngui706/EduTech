@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function TutorCourseEditor({ isCreate = false }) {
   const { courseId } = useParams();
@@ -27,13 +28,8 @@ export default function TutorCourseEditor({ isCreate = false }) {
 
   // Steps: 'metadata' or 'curriculum'
   const [step, setStep] = useState('metadata');
-  const normalizeUrl = (url) => {
-    if (!url) return '';
-    if (url.startsWith('http://localhost:5000')) {
-      return url.substring('http://localhost:5000'.length);
-    }
-    return url;
-  };
+  // normalizeUrl — resolves relative /uploads/... paths to absolute URLs
+  const normalizeUrl = (url) => resolveMediaUrl(url);
   // Track course approval/published state for UI hints
   const [courseStatus, setCourseStatus] = useState({ status: 'draft', is_approved: false });
 
@@ -572,7 +568,7 @@ export default function TutorCourseEditor({ isCreate = false }) {
                 <div className="flex items-center space-x-4">
                   <div className="w-32 aspect-video bg-slate-100 dark:bg-darkBg rounded-xl border border-slate-200 dark:border-darkBorder overflow-hidden flex items-center justify-center">
                     {metadata.thumbnail_url ? (
-                      <img src={metadata.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                      <img src={resolveMediaUrl(metadata.thumbnail_url)} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <BookOpen className="h-8 w-8 text-slate-300" />
                     )}

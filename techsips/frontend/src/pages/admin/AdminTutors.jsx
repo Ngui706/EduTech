@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function AdminTutors() {
   const [tutors, setTutors] = useState([]);
@@ -128,7 +129,7 @@ export default function AdminTutors() {
                 <div className="flex-shrink-0">
                   {tutor.users?.avatar_url ? (
                     <img
-                      src={tutor.users.avatar_url}
+                      src={resolveMediaUrl(tutor.users.avatar_url)}
                       alt=""
                       className="w-14 h-14 rounded-2xl object-cover border border-slate-200 dark:border-darkBorder"
                     />

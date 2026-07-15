@@ -4,6 +4,7 @@ import { Sun, Moon, Search, BookOpen, GraduationCap, LogOut, Menu, X, User, Bell
 import useAuthStore from '../store/authStore';
 import useThemeStore from '../store/themeStore';
 import api from '../api/axios';
+import { resolveMediaUrl } from '../utils/resolveUrl';
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -134,7 +135,7 @@ export default function Navbar() {
                   className="flex items-center space-x-2 p-1.5 rounded-xl border border-slate-200 dark:border-darkBorder hover:bg-slate-100 dark:hover:bg-darkCard transition-all text-slate-700 dark:text-slate-200"
                 >
                   {user?.avatar_url ? (
-                    <img src={user.avatar_url} alt="" className="h-7 w-7 rounded-lg object-cover" />
+                    <img src={resolveMediaUrl(user.avatar_url)} alt="" className="h-7 w-7 rounded-lg object-cover" />
                   ) : (
                     <div className="h-7 w-7 rounded-lg bg-brand-500 text-white flex items-center justify-center font-bold text-xs">
                       {user?.full_name?.charAt(0).toUpperCase()}

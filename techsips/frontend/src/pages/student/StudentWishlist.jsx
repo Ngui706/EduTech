@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, Trash2, ArrowRight } from 'lucide-react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function StudentWishlist() {
   const [wishlist, setWishlist] = useState([]);
@@ -63,7 +64,7 @@ export default function StudentWishlist() {
               <div className="flex items-center space-x-4 min-w-0">
                 <div className="w-16 h-12 bg-slate-100 dark:bg-darkBg rounded-lg overflow-hidden flex-shrink-0">
                   {item.courses?.thumbnail_url ? (
-                    <img src={item.courses.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                    <img src={resolveMediaUrl(item.courses.thumbnail_url)} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold text-xs">
                       TS

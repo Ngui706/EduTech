@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 // ─── Status Badge ──────────────────────────────────────────────────────────────
 function StatusBadge({ status, approved }) {
@@ -117,7 +118,7 @@ function TutorCard({ tutor, onTutorDeleted, onCourseDeleted }) {
         <div className="flex-shrink-0">
           {tutor.avatar_url ? (
             <img
-              src={tutor.avatar_url}
+              src={resolveMediaUrl(tutor.avatar_url)}
               alt={tutor.full_name}
               className="w-14 h-14 rounded-2xl object-cover border border-slate-200 dark:border-darkBorder"
             />
@@ -199,7 +200,7 @@ function TutorCard({ tutor, onTutorDeleted, onCourseDeleted }) {
                   <div className="flex-shrink-0">
                     {course.thumbnail_url ? (
                       <img
-                        src={course.thumbnail_url}
+                        src={resolveMediaUrl(course.thumbnail_url)}
                         alt={course.title}
                         className="w-16 h-10 rounded-lg object-cover border border-slate-200 dark:border-darkBorder"
                       />

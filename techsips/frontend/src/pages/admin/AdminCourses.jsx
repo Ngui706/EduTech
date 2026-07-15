@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { resolveMediaUrl } from '../../utils/resolveUrl';
 
 export default function AdminCourses() {
   const [pendingCourses, setPendingCourses] = useState([]);
@@ -208,7 +209,7 @@ export default function AdminCourses() {
                   {/* Thumbnail */}
                   <div className="sm:w-48 aspect-video sm:aspect-auto bg-slate-100 dark:bg-darkBg flex-shrink-0 relative overflow-hidden">
                     {course.thumbnail_url ? (
-                      <img src={course.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                      <img src={resolveMediaUrl(course.thumbnail_url)} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-brand-500/10 text-brand-500 font-bold text-lg">TS</div>
                     )}
